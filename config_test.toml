@@ -1,0 +1,5 @@
+[env]
+    env = "1"
+    service_name = "2"
+    project_id = "3"
+    log_level = "4"

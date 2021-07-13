@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-configmap
+  labels:
+    app: test # {"$kpt-set":"name"}
+data:
+  config.toml: |-
+    [env]
+        env = "1"
+        service_name = "2"
+        project_id = "3"
+        log_level = "4"
+
