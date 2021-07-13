@@ -47,4 +47,6 @@ conf := c.(config.Config)
 ```
 
 if run local, run golang with LOCAL=1
-`LOCAL=1 go run main.go`
+```sh
+LOCAL=1 go run main.go
+```
