@@ -14,9 +14,9 @@ import (
 )
 
 const (
-	EnableLocalConfigFlagEnv = "LOCAL"
+	EnableLocalConfigFlagEnv    = "LOCAL"
 	FileEnvKey                  = "CONFIG_FILE_PATH"
-	LocalConfigPath = "LOCAL_CONFIG_FILE_PATH"
+	LocalConfigPath             = "LOCAL_CONFIG_FILE_PATH"
 	DefaultConfigFilePath       = "/etc/app/config.toml"
 	LocalConfigFilePathManifest = "manifests/configmap.yaml"
 )
@@ -31,15 +31,15 @@ func loadViperFromConfig(configFilePath string, c interface{}) interface{} {
 	return loadViper(c)
 }
 
-func LoadViperFromManifest(manifestFilePath string, c interface{}) interface{} {
+func LoadViperFromManifest(manifestFilePath string, c interface{}) (interface{}, error) {
 	buf, err := ioutil.ReadFile(manifestFilePath)
 	if !errors.Is(err, nil) {
-		panic(fmt.Errorf("config file read error: %w", err))
+		return nil, fmt.Errorf("config file read error: %w", err)
 	}
 	data := make(map[string]map[string]string, 20)
 	err = yaml.Unmarshal(buf, &data)
 	if !errors.Is(err, nil) {
-		panic(fmt.Errorf("config file read error: %w", err))
+		return nil, fmt.Errorf("config file read error: %w", err)
 	}
 
 	b, ok := data["data"]["config.toml"]
@@ -50,11 +50,11 @@ func LoadViperFromManifest(manifestFilePath string, c interface{}) interface{} {
 	viper.SetConfigType("toml")
 	err = viper.ReadConfig(bytes.NewBuffer([]byte(b)))
 	if !errors.Is(err, nil) {
-		panic(fmt.Errorf("config file read error: %w", err))
+		return nil, fmt.Errorf("config file read error: %w", err)
 	}
 	viper.AutomaticEnv()
 
-	return loadViper(c)
+	return loadViper(c), nil
 }
 
 func loadViper(c interface{}) interface{} {
@@ -62,7 +62,7 @@ func loadViper(c interface{}) interface{} {
 		panic(fmt.Errorf("config file read error: %w", err))
 	}
 
-	// バリデーションチェック
+	// validation check
 	validate := validator.New()
 	if err := validate.Struct(c); !errors.Is(err, nil) {
 		panic(fmt.Errorf("config file validation error: %w", err))
@@ -78,20 +78,24 @@ func Initialize(config interface{}) (interface{}, error) {
 	}
 
 	var conf interface{}
+	var err error
 	if localFlag := os.Getenv(EnableLocalConfigFlagEnv); localFlag != "" {
 		if localConfigFilePath := os.Getenv(LocalConfigPath); localConfigFilePath != "" {
 			fmt.Printf("config file is %v\n", localConfigFilePath)
-			conf = LoadViperFromManifest(localConfigFilePath, config)
+			conf, err = LoadViperFromManifest(localConfigFilePath, config)
 		} else {
 			fmt.Printf("config file is %v\n", LocalConfigFilePathManifest)
-			conf = LoadViperFromManifest(LocalConfigFilePathManifest, config)
+			conf, err = LoadViperFromManifest(LocalConfigFilePathManifest, config)
 		}
 	} else {
-		// 設定ファイルの読み取りエラーに備えてパスを標準出力する（Logger初期化前なのでLoggerを使わない）
+		// Output the path to standard output in case of a read error in the configuration file
+		// (Logger is not used because its before Logger initialization)
 		fmt.Printf("config file is %v\n", confPath)
 		conf = loadViperFromConfig(confPath, config)
 	}
-
+	if err != nil {
+		return nil, err
+	}
 	b, e := json.Marshal(conf)
 	if e != nil {
 		return nil, fmt.Errorf("config output json marshal err %w", e)
