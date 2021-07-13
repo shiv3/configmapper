@@ -39,11 +39,14 @@ data:
 Initialize config from struct
 `main.go`
 ```go
-c, err := configmapper.Initialize(config.Config{})
+c, err := configmapper.Initialize(Config{})
 if err != nil {
     panic(err) // error handling
 }
-conf := c.(config.Config)
+config := c.(Config)
+// use config
+...
+
 ```
 
 if run local, run golang with LOCAL=1
